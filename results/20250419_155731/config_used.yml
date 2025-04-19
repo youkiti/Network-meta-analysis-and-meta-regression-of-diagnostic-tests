@@ -18,7 +18,7 @@ data:
 
 # NMA model settings
 nma:
-  iter: 300  # 実験をより速く行うためにさらに少なくする
+  iter: 1000
   chains: 2
   cores: 2
   adapt_delta: 0.99

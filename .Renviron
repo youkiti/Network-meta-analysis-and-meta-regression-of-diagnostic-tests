@@ -1,0 +1,3 @@
+PATH="${RTOOLS44_HOME}\x86_64-w64-mingw32.static.posix\bin;${RTOOLS44_HOME}\usr\bin;${PATH}"
+RTOOLS44_HOME=C:/rtools44
+BINPREF="C:/rtools44/x86_64-w64-mingw32.static.posix/bin/"

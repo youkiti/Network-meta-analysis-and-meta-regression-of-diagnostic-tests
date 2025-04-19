@@ -308,13 +308,22 @@ run_nma_model <- function(data, iter = 20000, chains = 4, cores = 4, adapt_delta
   )
   
   # モデルを実行
+  # 並列処理の問題を修正
   start_time <- Sys.time()
+  
+  # cores パラメータが NA になることを防ぐ
+  actual_cores <- min(chains, parallel::detectCores())
+  if (is.na(actual_cores) || actual_cores < 1) actual_cores <- 1
+  
+  message(paste("Using", actual_cores, "cores for", chains, "chains"))
+  
   fit.nma <- rstan::stan(
     fit = stan.model.nma,
     data = data$para.as.ls.nma,
     iter = iter,
     chains = chains,
-    cores = cores,
+    cores = actual_cores,
+    refresh = 100,  # 進捗状況の表示頻度
     control = list(
       adapt_delta = adapt_delta,
       stepsize = stepsize,

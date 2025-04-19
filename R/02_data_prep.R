@@ -7,8 +7,10 @@
 #' @param markers 対象のマーカー名のベクトル
 #' @return データと前処理されたパラメータのリスト
 prepare_data <- function(file_path, markers) {
-  # 元のIPYNBにあるgetpara関数を使用
+  # 元のNMA_code.rのgetpara関数と同様にシンプルに読み込み
+  message(paste("Reading data from:", file_path))
   data.mk <- read.csv(file_path)
+  message("Data file read successfully")
   
   names.study <- unique(fixlen.str(data.mk$Study))
   hash.study <- 1:length(names.study)

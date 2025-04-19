@@ -1,0 +1,45 @@
+# ネットワークメタアナリシスとメタ回帰分析の設定ファイル
+
+# データ設定
+data:
+  filename: "Sepsis_nma_data.csv"
+  markers:
+    - "qSOFA"
+    - "PCT"
+    - "presepsin"
+    - "CRP"
+    - "CD64"
+    - "IL-6"
+    - "sTREM-1"
+    - "LBP"
+    - "SIRS"
+    - "SOFA"
+  reference_marker: "qSOFA"
+
+# NMAモデル設定
+nma:
+  iter: 1000  # 実験用に減らした反復回数
+  chains: 2   # チェーン数も減らす
+  cores: 2    # コア数も減らす
+  adapt_delta: 0.99
+  stepsize: 0.01
+  max_treedepth: 17
+
+# メタ回帰設定
+meta_regression:
+  run: false  # 実験用に無効化
+  covariate: "is.prevalence05"
+  iter: 1000  # 実験用に減らした反復回数
+  chains: 2   # チェーン数も減らす
+  cores: 2    # コア数も減らす
+  adapt_delta: 0.99
+  stepsize: 0.01
+  max_treedepth: 17
+
+# 結果管理
+results:
+  prune_old_results: true
+  keep_last_n_results: 5
+
+# 乱数シード（再現性のため）
+seed: 12345

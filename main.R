@@ -1,72 +1,75 @@
-# メインスクリプト
-# このファイルでは、ネットワークメタアナリシスとメタ回帰分析のワークフローを実行します
+# Main Script
+# This file runs the workflow for network meta-analysis and meta-regression
 
-# 環境セットアップの確認
+# Check environment setup
 if (!file.exists("setup.R")) {
-  stop("setup.Rファイルが見つかりません。正しいディレクトリにいるか確認してください。")
+  stop("setup.R file not found. Please check if you are in the correct directory.")
 }
 source("setup.R")
 
-# ライブラリとプロジェクトソースの読み込み
-message("必要なライブラリとプロジェクトソースを読み込んでいます...")
-library(here)  # パス管理用
-library(yaml)  # 設定読み込み用
-library(logger) # 構造化ログ用
-library(fs)    # ファイル操作用
+# Load libraries and project sources
+message("Loading libraries and project sources...")
+library(here)  # for path management
+library(yaml)  # for config loading
+library(logger) # for structured logging
+library(fs)    # for file operations
 
-# 関数の読み込み
+# Load functions
 source(here("R", "01_utils.R"))
 source(here("R", "02_data_prep.R"))
 source(here("R", "03_models.R"))
 source(here("R", "04_visualization.R"))
 
-# 設定の読み込み
+# Load configuration
 config <- yaml::read_yaml(here("config", "config.yml"))
-message("設定読み込み完了")
+message("Configuration loaded successfully")
 
-# タイムスタンプディレクトリ作成
+# Create timestamp directory for results
 timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
 results_dir <- path(here("results"), timestamp)
 dir_create(results_dir, recurse = TRUE)
-message(paste("結果ディレクトリを作成しました:", results_dir))
+message(paste("Results directory created:", results_dir))
 
-# 最新結果へのシンボリックリンク更新
+# Update link to latest results
 latest_link <- path(here("results"), "latest")
 if (dir_exists(latest_link)) dir_delete(latest_link)
 if (Sys.info()["sysname"] == "Windows") {
-  # Windowsではシンボリックリンクを作成せず、バッチファイルを作成
+  # On Windows, create a batch file instead of symbolic link
   batch_content <- paste0("@echo off\ncd ", normalizePath(results_dir))
   writeLines(batch_content, path(here("results"), "latest.bat"))
-  message("Windowsでは'latest.bat'ファイルを作成しました。")
+  message("On Windows, created 'latest.bat' file.")
 } else {
-  # Unix系OSではシンボリックリンクを作成
+  # On Unix systems, create a symbolic link
   link_create(results_dir, latest_link)
-  message("最新結果へのシンボリックリンクを更新しました。")
+  message("Symbolic link to latest results updated.")
 }
 
-# ロガー設定
+# Logger setup
 log_appender(appender_file(path(results_dir, "run.log")))
 log_threshold(INFO)
-log_info("分析開始")
+log_info("Analysis started")
 
-# 設定ファイルをコピー（記録用）
+# Copy configuration file (for record)
 file_copy(here("config", "config.yml"), path(results_dir, "config_used.yml"))
 
-# 乱数シードの設定（再現性のため）
+# Set random seed (for reproducibility)
 set.seed(config$seed)
-log_info(paste("乱数シード設定:", config$seed))
+log_info(paste("Random seed set:", config$seed))
 
-# データ準備
-log_info("データ準備開始")
+# Data preparation
+log_info("Data preparation started")
+# Use original data file with relative path
+data_file_path <- "Sepsis_nma_data.csv"  # カレントディレクトリの直下に存在することを確認済み
+message(paste("Using original data file:", data_file_path))
 data <- prepare_data(
-  file_path = here("data", "raw", config$data$filename),
+  file_path = data_file_path,
   markers = config$data$markers
 )
 saveRDS(data, path(results_dir, "prepared_data.rds"))
-log_info("データ準備完了")
+log_info("Data preparation completed")
 
-# NMAモデル実行
-log_info("ネットワークメタアナリシス実行開始")
+# Run NMA model
+log_info("Network meta-analysis started")
 nma_results <- run_nma_model(
   data = data,
   iter = config$nma$iter,
@@ -79,16 +82,16 @@ nma_results <- run_nma_model(
 )
 saveRDS(nma_results, path(results_dir, "nma_results.rds"))
 
-# NMA結果のCSV出力
+# Output NMA results to CSV
 write.csv(nma_results$mu, path(results_dir, "nma_sensitivity_specificity.csv"))
 write.csv(nma_results$dor, path(results_dir, "nma_dor.csv"))
 write.csv(nma_results$sindex, path(results_dir, "nma_sindex.csv"))
-log_info("ネットワークメタアナリシス実行完了")
+log_info("Network meta-analysis completed")
 
-# メタ回帰モデル実行（設定で有効になっている場合）
+# Run meta-regression model (if enabled in configuration)
 regression_results <- NULL
 if (config$meta_regression$run) {
-  log_info("メタ回帰モデル実行開始")
+  log_info("Meta-regression model started")
   regression_results <- run_regression_model(
     data = data,
     covariate = config$meta_regression$covariate,
@@ -102,32 +105,32 @@ if (config$meta_regression$run) {
   )
   saveRDS(regression_results, path(results_dir, "regression_results.rds"))
   
-  # メタ回帰結果のCSV出力
+  # Output meta-regression results to CSV
   write.csv(regression_results$mu, path(results_dir, "regression_sensitivity_specificity.csv"))
   write.csv(regression_results$dor, path(results_dir, "regression_dor.csv"))
   write.csv(regression_results$sindex, path(results_dir, "regression_sindex.csv"))
   write.csv(regression_results$beta1, path(results_dir, "regression_coefficients.csv"))
-  log_info("メタ回帰モデル実行完了")
+  log_info("Meta-regression model completed")
 }
 
-# 結果の可視化
-log_info("可視化作成開始")
+# Results visualization
+log_info("Visualization creation started")
 plots <- create_visualizations(
   nma_results = nma_results, 
   regression_results = regression_results, 
   reference_marker = config$data$reference_marker
 )
 
-# プロットを保存
+# Save plots
 for (i in seq_along(plots)) {
   plot_name <- names(plots)[i]
   plot_path <- path(results_dir, paste0(plot_name, ".png"))
   ggsave(plot_path, plots[[i]], width = 10, height = 8, dpi = 300)
-  log_info(paste("プロット保存:", plot_name))
+  log_info(paste("Plot saved:", plot_name))
 }
-log_info("可視化作成完了")
+log_info("Visualization creation completed")
 
-# 実行情報を記録
+# Record execution information
 run_info <- list(
   timestamp = Sys.time(),
   r_version = R.version.string,
@@ -143,21 +146,21 @@ if (!is.null(regression_results)) {
   run_info$execution_time$regression <- regression_results$execution_info$elapsed_time
 }
 
-# JSONとRDSで保存
+# Save as JSON and RDS
 jsonlite::write_json(run_info, path(results_dir, "run_info.json"), pretty = TRUE, auto_unbox = TRUE)
 saveRDS(run_info, path(results_dir, "run_info.rds"))
-log_info("実行情報を記録しました")
+log_info("Execution information recorded")
 
-# 古い結果の削除（設定で有効になっている場合）
+# Delete old results (if enabled in configuration)
 if (config$results$prune_old_results) {
-  log_info("古い結果を削除しています...")
+  log_info("Deleting old results...")
   pruned_count <- prune_old_results(
     results_path = here("results"), 
     keep_last = config$results$keep_last_n_results
   )
-  log_info(paste("削除された古い結果ディレクトリ数:", pruned_count))
+  log_info(paste("Number of old result directories deleted:", pruned_count))
 }
 
-log_info("分析完了")
-message("分析が完了しました。結果は以下のディレクトリに保存されています:")
+log_info("Analysis completed")
+message("Analysis completed. Results saved to directory:")
 message(results_dir)
