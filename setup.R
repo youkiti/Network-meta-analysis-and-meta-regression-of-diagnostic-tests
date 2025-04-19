@@ -16,13 +16,21 @@ required_packages <- c(
   "jsonlite", "digest"
 )
 
-# パッケージのインストールチェック
-for (pkg in required_packages) {
+# パッケージのインストールとロードを行う関数
+install_and_load_package <- function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     message(paste("Installing package:", pkg))
     install.packages(pkg)
+  } else {
+    message(paste("Package already installed:", pkg))
   }
   library(pkg, character.only = TRUE)
+}
+
+# 基本パッケージのインストールとロード
+message("Checking and loading basic packages...")
+for (pkg in required_packages) {
+  install_and_load_package(pkg)
 }
 
 # Rtools44の設定 - 新しいパス構造に対応
@@ -61,11 +69,12 @@ message("Checking if Rtools is found:")
 has_rtools <- pkgbuild::has_rtools()
 message(paste("has_rtools() returns:", has_rtools))
 
-# Rcppなどの重要パッケージを再インストール
-message("Reinstalling critical C++ packages...")
-install.packages(c("Rcpp", "RcppEigen", "BH", "StanHeaders", "rstan"), 
-                 repos = "https://cloud.r-project.org",
-                 dependencies = TRUE)
+# 重要なC++パッケージのインストールチェック
+message("Checking critical C++ packages...")
+critical_cpp_packages <- c("Rcpp", "RcppEigen", "BH", "StanHeaders", "rstan")
+for (pkg in critical_cpp_packages) {
+  install_and_load_package(pkg)
+}
 
 # Stan設定
 message("Setting up rstan options...")

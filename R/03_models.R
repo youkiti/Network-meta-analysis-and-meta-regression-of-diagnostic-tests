@@ -298,8 +298,14 @@ transformed parameters{
 run_nma_model <- function(data, iter = 20000, chains = 4, cores = 4, adapt_delta = 0.99, 
                           stepsize = 0.01, max_treedepth = 17, results_dir = NULL) {
   
+  # .ipynbファイルと完全に同じ方法でモデルを実行
+  # まずパラレル処理の設定を確保
+  options(mc.cores = parallel::detectCores())
+  registerDoParallel(4)
+  
   # モデルをコンパイル
-  stan.model.nma <- rstan::stan(
+  message("Compiling NMA model...")
+  stan.model.nma <- stan(
     model_code = STAN_CODE_NMA,
     data = data$para.as.ls.nma, 
     iter = 1, 
@@ -307,23 +313,17 @@ run_nma_model <- function(data, iter = 20000, chains = 4, cores = 4, adapt_delta
     chains = 2
   )
   
-  # モデルを実行
-  # 並列処理の問題を修正
+  # サンプリング - .ipynbと完全に同じ引数と順序を使用
+  message("Starting MCMC sampling...")
   start_time <- Sys.time()
   
-  # cores パラメータが NA になることを防ぐ
-  actual_cores <- min(chains, parallel::detectCores())
-  if (is.na(actual_cores) || actual_cores < 1) actual_cores <- 1
-  
-  message(paste("Using", actual_cores, "cores for", chains, "chains"))
-  
-  fit.nma <- rstan::stan(
+  # 完全に.ipynbファイルと同じパラメータのみ使用
+  fit.nma <- stan(
     fit = stan.model.nma,
     data = data$para.as.ls.nma,
     iter = iter,
     chains = chains,
-    cores = actual_cores,
-    refresh = 100,  # 進捗状況の表示頻度
+    cores = 4,
     control = list(
       adapt_delta = adapt_delta,
       stepsize = stepsize,
@@ -382,8 +382,9 @@ run_regression_model <- function(data, covariate = "is.prevalence05", iter = 200
                                 cores = 4, adapt_delta = 0.99, stepsize = 0.01, 
                                 max_treedepth = 17, results_dir = NULL) {
   
-  # モデルをコンパイル
-  stan.model.1mk <- rstan::stan(
+  # メタ回帰モデルも同様に
+  message("Compiling meta-regression model...")
+  stan.model.1mk <- stan(
     model_code = STAN_CODE_1MK,
     data = data$para.as.ls.1mk, 
     iter = 1, 
@@ -391,14 +392,17 @@ run_regression_model <- function(data, covariate = "is.prevalence05", iter = 200
     chains = 1
   )
   
-  # モデルを実行
+  # サンプリング - .ipynbと完全に同じ引数と順序を使用
+  message("Starting meta-regression MCMC sampling...")
   start_time <- Sys.time()
-  fit.1mk <- rstan::stan(
+  
+  # 完全に.ipynbファイルと同じパラメータのみ使用
+  fit.1mk <- stan(
     fit = stan.model.1mk,
     data = data$para.as.ls.1mk,
     iter = iter,
     chains = chains,
-    cores = cores,
+    cores = 4,
     control = list(
       adapt_delta = adapt_delta,
       stepsize = stepsize,
